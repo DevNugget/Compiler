@@ -104,12 +104,29 @@ tvec_t tokenize(str_t &filename) {
     return tokens;
 }
 
-void parse_tokens(tvec_t &tokens) {
+void parse_tokens(tvec_t &tokens, str_t &out_buffer) {
     for (int ptr = 0; ptr < tokens.size(); ptr++) {
         if (tokens[ptr].type == STACKEXPR) {
-            Token identifier = tokens[ptr++];
+            Token identifier = tokens[++ptr];
 
             if (identifier.type == IDENTIFIER) {
+                out_buffer += "%macro " + identifier.value + "\n";
+
+                ptr++;
+                while (tokens[ptr].type != END) {
+                    if (tokens[ptr].type == INT_T) {
+                        out_buffer += "mov rax, " + tokens[ptr].value + "\n";
+                        out_buffer += "push rax\n";
+                    } else if (tokens[ptr].type == ADD_OP) {
+                        out_buffer += "pop rax\n";
+                        out_buffer += "pop rbx\n";
+                        out_buffer += "add rax, rbx\n";
+                        out_buffer += "push rbx\n";
+                    }
+                    ptr++;
+                }
+
+                out_buffer += "%endmacro\n";
 
             } else {
                 std::cerr << "ERROR: Expected name/identifier after 'stackexpr' for declaration." << '\n';
@@ -130,9 +147,16 @@ int main(int argc, char** argv) {
 
     tvec_t tokens = tokenize(src_filename);
 
+
     for (Token tok: tokens) {
         std::cout << "TokenType: " << tok.type << " Value: " << tok.value << '\n';
     }
+
+    str_t out_buffer;
+
+    parse_tokens(tokens, out_buffer);
+
+    std::cout << '\n' << out_buffer << '\n';
 
     return 0;
 }
